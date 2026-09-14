@@ -1,0 +1,12 @@
+{
+    "name": "RXTX_Link",
+    "version": "1.0.0",
+    "description": "Lightweight binary messaging protocol for embedded systems",
+    "keywords": "protocol, uart, binary",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/MehmanLezgin/RXTXLink"
+    },
+    "frameworks": "arduino",
+    "platforms": "*"
+}
