@@ -14,4 +14,4 @@ typedef enum
     STATE_WAIT_PAYLOAD,
     STATE_WAIT_CRC_LOW,
     STATE_WAIT_CRC_HIGH
-} RxState;
+} PacketRxState;
