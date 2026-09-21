@@ -20,3 +20,12 @@ typedef struct
     uint32_t last_activity_ms;
     uint8_t ack_recieved;
 } RXTX_Session;
+
+
+void RXTX_Session__init(
+    RXTX_Session *s,
+    const uint16_t id,
+    uint8_t *buffer,
+    const uint16_t total_size,
+    const uint32_t time_ms
+);
