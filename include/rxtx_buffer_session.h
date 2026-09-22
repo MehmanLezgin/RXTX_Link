@@ -29,3 +29,5 @@ void RXTX_Session__init(
     const uint16_t total_size,
     const uint32_t time_ms
 );
+
+uint16_t RXTX_Session__get_chunk_size(const RXTX_Session *session);

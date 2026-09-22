@@ -54,7 +54,7 @@ static inline uint16_t __RXTX__set_u16_high8(uint16_t dest, uint8_t src)
 
 static inline uint16_t __read_uint16_be(const uint8_t *buffer)
 {
-    return ((uint16_t)buffer[0] << 8) | buffer[1];
+    return ((uint16_t)buffer[0] << 8) | (uint16_t) buffer[1];
 }
 
 static inline uint8_t __RXTX__is_system_response_id(const uint16_t id)
@@ -77,7 +77,7 @@ void __RXTX__transmit_packet(
     const RXTX_Link *link,
     const RXTX_Packet *packet);
 
-void __RXTX__send_system_response(const RXTX_Link *link, const uint16_t id, const uint16_t seq);
+void __RXTX__send_system_response(const RXTX_Link *link, const uint16_t sys_res_id, const uint16_t id, const uint16_t seq);
 
 void __RXTX__on_packet_recieved(RXTX_Link *link);
 void __RXTX__handle_system_response(RXTX_Link *link);

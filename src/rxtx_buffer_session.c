@@ -10,7 +10,7 @@ void RXTX_Session__init(
 {
     s->id = id;
     s->buffer = buffer;
-    s->ack_recieved = 0;
+    s->ack_recieved = 1;
     s->bytes_proceed = 0;
     s->expected_seq = 0;
     s->total_size = total_size;

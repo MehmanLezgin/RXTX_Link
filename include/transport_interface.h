@@ -3,7 +3,7 @@
 #include "rxtx_packet.h"
 
 typedef uint8_t (*ReadBuffer_t)(void *context, uint8_t *dest_buffer, const uint16_t max_length);
-typedef void (*TxFunc_t)(const uint8_t *packet, const uint16_t size);
+typedef void (*TxFunc_t)(void *context, const uint8_t *packet, const uint16_t size);
 typedef void (*OnPacketRecv_t)(const RXTX_Packet *packet);
 typedef uint8_t *(*OnBufferRecvStart_t)(const uint16_t id, const uint16_t size);
 typedef void (*OnBufferRecvEnd_t)(const uint16_t id, const uint8_t *buffer, const uint16_t size);
