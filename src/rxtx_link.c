@@ -169,7 +169,7 @@ void __RXTX__send_system_response(
 {
     uint8_t payload[2];
     payload[0] = id >> 8;
-    payload[1] = id & 0xFF;
+    payload[1] = id & 0x00FF;
 
     RXTX_Packet packet = RXTX_Packet__create(
         MAX_RXTX_PACKET_SYNC_U16,
@@ -212,6 +212,7 @@ void __RXTX__begin_buffer_recv(RXTX_Link *link)
 
     RXTX_Session__init(session, incoming_buffer_id, user_mem, incoming_buffer_size, __RXTX__get_millis(link));
     session->state = SESSION_RECV_ACTIVE;
+    __RXTX__send_system_response(link, RXTX_TYPE_ACK, incoming_buffer_id, pkt->seq);
 }
 
 void __RXTX__handle_system_response(RXTX_Link *link)
@@ -227,7 +228,10 @@ void __RXTX__handle_system_response(RXTX_Link *link)
     uint16_t ackSessionId = __read_uint16_be(pkt->payload);
     RXTX_Session *session = __RXTX__find_session(link, ackSessionId);
 
-    if (session == NULL || session->state != SESSION_TX_WAIT_ACK)
+    if (
+        session == NULL ||
+        (session->state != SESSION_TX_WAIT_ACK &&
+         session->state != SESSION_TX_HANDSHAKE_WAIT_ACK))
         return;
 
     __RXTX__update_session_last_activity(link, session);
@@ -239,9 +243,10 @@ void __RXTX__handle_system_response(RXTX_Link *link)
         if (pkt->seq != session->expected_seq)
             break;
 
+        uint8_t advance_bytes = session->state != SESSION_TX_HANDSHAKE_WAIT_ACK;
         session->ack_recieved = 1;
         session->state = SESSION_TX_SENDING;
-        __RXTX__process_transmit_session(link, session, 1);
+        __RXTX__process_transmit_session(link, session, advance_bytes);
         break;
     }
 
@@ -277,15 +282,15 @@ void __RXTX__on_valid_packet_recieved(RXTX_Link *link)
 
     RXTX_Session *session = __RXTX__find_session(link, pkt->id);
 
+    link->transport.on_packet_recv(pkt);
+
     // single packet
     if (session == NULL)
     {
         __RXTX__send_system_response(link, RXTX_TYPE_ACK, pkt->id, pkt->seq);
-        link->transport.on_packet_recv(pkt);
         return;
     }
 
-    // buffer chunk
     if (pkt->seq != session->expected_seq)
     {
         __RXTX__send_system_response(link, RXTX_TYPE_NACK_SEQ, pkt->id, pkt->seq);
@@ -294,6 +299,7 @@ void __RXTX__on_valid_packet_recieved(RXTX_Link *link)
 
     __RXTX__update_session_last_activity(link, session);
 
+    // buffer chunk
     uint16_t chunk_size = pkt->len;
     uint16_t bytes_proceed = session->bytes_proceed + chunk_size;
 
@@ -325,17 +331,29 @@ uint8_t RXTX__transmit_data(
     const uint16_t len)
 {
     RXTX_Session *session = __RXTX__get_free_session(link);
+
     if (session == NULL)
         return 0;
 
     RXTX_Session__init(session, id, payload, len, __RXTX__get_millis(link));
-    session->state = SESSION_TX_SENDING;
+
+    uint8_t bufferStartPayload[4];
+    bufferStartPayload[0] = id >> 8;
+    bufferStartPayload[1] = id & 0x00FF;
+    bufferStartPayload[2] = len >> 8;
+    bufferStartPayload[3] = len & 0x00FF;
+
+    session->ack_recieved = 0;
+    session->state = SESSION_TX_HANDSHAKE_WAIT_ACK;
+
+    __RXTX__send_packet(link, RXTX_TYPE_BUFFER_START, session->expected_seq, bufferStartPayload, sizeof(bufferStartPayload));
+
     return 1;
 }
 
 void RXTX__update(RXTX_Link *link)
 {
-    uint8_t temp_buffer[32];
+    uint8_t temp_buffer[64];
     uint8_t bytes_read = link->transport.read_buffer(
         link->transport.transport_context,
         temp_buffer,
@@ -354,6 +372,9 @@ void RXTX__update(RXTX_Link *link)
     for (uint8_t i = 0; i < RXTX_MAX_SESSIONS; i++)
     {
         RXTX_Session *session = &link->sessions[i];
+        if (__RXTX__handle_timeout(link, session))
+            continue;
+
         __RXTX__process_transmit_session(link, session, 0);
     }
 }
@@ -365,17 +386,6 @@ void __RXTX__process_transmit_session(
 {
     if (session->state != SESSION_TX_SENDING)
         return;
-
-    if (!session->ack_recieved)
-    {
-        if (__RXTX__is_session_timeout(link, session))
-        {
-            __RXTX__send_system_response(link, RXTX_TYPE_NACK_TIMEOUT, session->id, session->expected_seq);
-            session->state = SESSION_IDLE;
-        }
-
-        return;
-    }
 
     if (advance_bytes)
     {
@@ -458,4 +468,21 @@ uint16_t RXTX_Session__get_chunk_size(const RXTX_Session *session)
 {
     uint16_t remaining = session->total_size - session->bytes_proceed;
     return (remaining > MAX_RXTX_PAYLOAD_LEN) ? MAX_RXTX_PAYLOAD_LEN : remaining;
+}
+
+uint8_t __RXTX__handle_timeout(const RXTX_Link *link, RXTX_Session *session)
+{
+    if (session->state == SESSION_IDLE) return 0;
+    
+    if (session->ack_recieved &&
+        (session->state == SESSION_TX_WAIT_ACK ||
+         session->state == SESSION_TX_HANDSHAKE_WAIT_ACK))
+        return 0;
+
+    if (!__RXTX__is_session_timeout(link, session))
+        return 0;
+
+    __RXTX__send_system_response(link, RXTX_TYPE_NACK_TIMEOUT, session->id, session->expected_seq);
+    session->state = SESSION_IDLE;
+    return 1;
 }

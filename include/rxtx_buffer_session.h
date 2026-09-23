@@ -6,7 +6,8 @@ typedef enum
     SESSION_IDLE,
     SESSION_RECV_ACTIVE,
     SESSION_TX_WAIT_ACK,
-    SESSION_TX_SENDING
+    SESSION_TX_HANDSHAKE_WAIT_ACK,
+    SESSION_TX_SENDING,
 } RXTX_BufferSessionState;
 
 typedef struct

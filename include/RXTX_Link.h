@@ -20,7 +20,7 @@
 // acknowledgement
 #define RXTX_TYPE_ACK (uint16_t)0xFF00u
 #define RXTX_TYPE_BUFFER_START (uint16_t)0xFE00u
-#define RXTX_TYPE_BUFFER_END_ACK (uint16_t)0xFD00u
+// #define RXTX_TYPE_BUFFER_END_ACK (uint16_t)0xFD00u
 #define RXTX_TYPE_NACK_CRC (uint16_t)0xFC00u
 #define RXTX_TYPE_NACK_SEQ (uint16_t)0xFB00u
 #define RXTX_TYPE_NACK_NO_MEM (uint16_t)0xFA00u
@@ -102,3 +102,4 @@ uint32_t __RXTX__get_millis(const RXTX_Link *link);
 void __RXTX__update_session_last_activity(const RXTX_Link *link, RXTX_Session *session);
 uint8_t __RXTX__is_session_timeout(const RXTX_Link *link, const RXTX_Session *session);
 uint8_t __RXTX__is_byte_read_timeout(const RXTX_Link *link);
+uint8_t __RXTX__handle_timeout(const RXTX_Link *link, RXTX_Session *session);
